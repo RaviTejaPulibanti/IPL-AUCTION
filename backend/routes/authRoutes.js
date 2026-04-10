@@ -17,9 +17,13 @@ const generateToken = (id) => {
 // @route   POST /api/auth/register
 // @access  Public
 router.post('/register', async (req, res) => {
-  const { name, owner, username, password, isAdmin } = req.body;
+  const { fullName, username, password, isAdmin } = req.body;
 
   try {
+    if (!fullName || !username || !password) {
+      return res.status(400).json({ message: 'All fields are required' });
+    }
+
     const teamExists = await Team.findOne({ username });
 
     if (teamExists) {
@@ -30,8 +34,8 @@ router.post('/register', async (req, res) => {
     const hashedPassword = await bcrypt.hash(password, salt);
 
     const team = await Team.create({
-      name,
-      owner,
+      name: fullName,
+      owner: fullName,
       username,
       password: hashedPassword,
       isAdmin: isAdmin || false,
@@ -41,7 +45,9 @@ router.post('/register', async (req, res) => {
       res.status(201).json({
         _id: team._id,
         name: team.name,
+        owner: team.owner,
         username: team.username,
+        budget: team.budget,
         isAdmin: team.isAdmin,
         token: generateToken(team._id),
       });
@@ -60,13 +66,16 @@ router.post('/login', async (req, res) => {
   const { username, password } = req.body;
 
   try {
-    const team = await Team.findOne({ username });
+    const team = await Team.findOne({ username }).populate('players');
 
     if (team && (await bcrypt.compare(password, team.password))) {
       res.json({
         _id: team._id,
         name: team.name,
+        owner: team.owner,
         username: team.username,
+        budget: team.budget,
+        players: team.players || [],
         isAdmin: team.isAdmin,
         token: generateToken(team._id),
       });
@@ -82,7 +91,23 @@ router.post('/login', async (req, res) => {
 // @route   GET /api/auth/me
 // @access  Private
 router.get('/me', protect, async (req, res) => {
-  res.json(req.user);
+  try {
+    const team = await Team.findById(req.user._id).populate('players');
+    if (!team) {
+      return res.status(404).json({ message: 'Team not found' });
+    }
+    res.json({
+      _id: team._id,
+      name: team.name,
+      owner: team.owner,
+      username: team.username,
+      budget: team.budget,
+      players: team.players || [],
+      isAdmin: team.isAdmin,
+    });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
 });
 
 export default router;

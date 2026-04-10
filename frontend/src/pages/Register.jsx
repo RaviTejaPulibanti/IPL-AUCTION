@@ -1,168 +1,158 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { motion } from 'framer-motion';
-import { UserPlus, User, Lock, Building, Tag } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { UserPlus, User, AtSign, Lock } from 'lucide-react';
 
 const Register = () => {
-  const [formData, setFormData] = useState({
-    name: '',
-    owner: '',
-    username: '',
-    password: '',
-    isAdmin: false
-  });
-  const [error, setError] = useState('');
-  const [loading, setLoading] = useState(false);
-  
-  const { register } = useAuth();
-  const navigate = useNavigate();
+  const [fullName, setFullName]       = useState('');
+  const [username, setUsername]       = useState('');
+  const [password, setPassword]       = useState('');
+  const [confirmPassword, setConfirm] = useState('');
+  const [error, setError]             = useState('');
+  const [loading, setLoading]         = useState(false);
+  const [activeDot, setActiveDot]     = useState(0);
 
-  const handleChange = (e) => {
-    const { name, value, type, checked } = e.target;
-    setFormData(prev => ({
-      ...prev,
-      [name]: type === 'checkbox' ? checked : value
-    }));
+  const { register } = useAuth();
+  const navigate     = useNavigate();
+
+  useEffect(() => {
+    const id = setInterval(() => setActiveDot(d => (d + 1) % 6), 850);
+    return () => clearInterval(id);
+  }, []);
+
+  const flashError = (msg) => {
+    setError(msg);
+    setTimeout(() => setError(''), 3000);
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    setError('');
+    if (password !== confirmPassword) {
+      flashError("Passwords don't match.");
+      return;
+    }
     setLoading(true);
+    setError('');
     try {
-      await register(formData);
+      await register({ fullName, username, password });
       navigate('/');
     } catch (err) {
-      setError(err.response?.data?.message || 'Registration failed');
+      flashError(err.response?.data?.message || 'Registration failed');
     } finally {
       setLoading(false);
     }
   };
 
+  const fieldWrap = "flex items-center gap-2 bg-zinc-900 border border-zinc-800 rounded-lg px-3 transition-all focus-within:border-orange-500 focus-within:ring-2 focus-within:ring-orange-500/10";
+  const inp       = "flex-1 bg-transparent border-none outline-none py-2.5 text-sm text-white placeholder-zinc-600";
+  const lbl       = "block text-[10px] font-bold tracking-widest uppercase text-zinc-500 mb-1.5";
+
   return (
-    <div className="flex items-center justify-center min-h-[80vh]">
-      <motion.div 
-        initial={{ opacity: 0, y: 20 }}
+    <div className="flex items-center justify-center min-h-[80vh] px-4 py-8">
+      <motion.div
+        initial={{ opacity: 0, y: 14 }}
         animate={{ opacity: 1, y: 0 }}
-        className="bg-slate-900 p-8 rounded-2xl shadow-2xl border border-slate-800 w-full max-w-md"
+        className="w-full max-w-sm border border-zinc-800 rounded-2xl overflow-hidden bg-zinc-950"
       >
-        <div className="flex justify-center mb-4">
-          <div className="bg-yellow-500/10 p-4 rounded-full border border-yellow-500/20">
-            <UserPlus className="w-8 h-8 text-yellow-500" />
+
+        {/* ── Top dark panel ── */}
+        <div className="bg-black px-6 pt-7 pb-6 text-center">
+          <div className="relative w-12 h-12 mx-auto mb-4">
+            <div className="absolute bottom-0 left-0 w-1.5 h-9 bg-amber-300 rounded-t-sm" />
+            <div className="absolute bottom-0 left-1/2 -translate-x-1/2 w-1.5 h-11 bg-amber-300 rounded-t-sm" />
+            <div className="absolute bottom-0 right-0 w-1.5 h-9 bg-amber-300 rounded-t-sm" />
+            <div className="absolute top-1 left-0 w-3 h-0.5 bg-amber-300 rounded-full" />
+            <div className="absolute top-1 right-0 w-3 h-0.5 bg-amber-300 rounded-full" />
           </div>
+          <h1 className="text-2xl font-extrabold text-white leading-tight mb-1">
+            Join the <span className="text-orange-500">squad.</span>
+          </h1>
+          <p className="text-[11px] font-semibold tracking-widest uppercase text-zinc-600">
+            IPL Auction 2026
+          </p>
         </div>
-        
-        <h2 className="text-3xl font-bold text-center mb-6 bg-gradient-to-r from-white to-slate-400 bg-clip-text text-transparent">
-          Register Your Team
-        </h2>
 
-        {error && (
-          <div className="bg-red-500/10 border border-red-500/50 text-red-500 p-3 rounded-lg mb-4 text-sm">
-            {error}
-          </div>
-        )}
+        {/* ── Form ── */}
+        <div className="px-6 pt-5 pb-4">
 
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className="block text-sm font-medium text-slate-400 mb-1">Team Name</label>
-              <div className="relative">
-                <Building className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" />
-                <input
-                  type="text"
-                  name="name"
-                  required
-                  className="w-full bg-slate-950 border border-slate-800 rounded-lg py-2.5 pl-9 pr-4 text-white focus:outline-none focus:ring-1 focus:ring-yellow-500 shadow-inner text-sm"
-                  placeholder="e.g. MI"
-                  value={formData.name}
-                  onChange={handleChange}
-                />
-              </div>
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-slate-400 mb-1">Owner</label>
-              <div className="relative">
-                <Tag className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" />
-                <input
-                  type="text"
-                  name="owner"
-                  required
-                  className="w-full bg-slate-950 border border-slate-800 rounded-lg py-2.5 pl-9 pr-4 text-white focus:outline-none focus:ring-1 focus:ring-yellow-500 text-sm"
-                  placeholder="Owner Name"
-                  value={formData.owner}
-                  onChange={handleChange}
-                />
-              </div>
-            </div>
+          {/* Over dots */}
+          <div className="flex justify-center gap-1.5 mb-5">
+            {Array.from({ length: 6 }).map((_, i) => (
+              <div key={i} className={`w-2 h-2 rounded-full transition-all duration-200 ${
+                i === activeDot ? 'bg-orange-500' : 'bg-zinc-800'
+              }`} />
+            ))}
           </div>
 
-          <div>
-            <label className="block text-sm font-medium text-slate-400 mb-1">Username</label>
-            <div className="relative">
-              <User className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" />
-              <input
-                type="text"
-                name="username"
-                required
-                className="w-full bg-slate-950 border border-slate-800 rounded-lg py-2.5 pl-9 pr-4 text-white focus:outline-none focus:ring-1 focus:ring-yellow-500 text-sm"
-                placeholder="Choose a username"
-                value={formData.username}
-                onChange={handleChange}
-              />
-            </div>
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-slate-400 mb-1">Password</label>
-            <div className="relative">
-              <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" />
-              <input
-                type="password"
-                name="password"
-                required
-                className="w-full bg-slate-950 border border-slate-800 rounded-lg py-2.5 pl-9 pr-4 text-white focus:outline-none focus:ring-1 focus:ring-yellow-500 text-sm"
-                placeholder="••••••••"
-                value={formData.password}
-                onChange={handleChange}
-              />
-            </div>
-          </div>
-
-          <div className="flex items-center space-x-2 pt-2">
-            <input
-              type="checkbox"
-              name="isAdmin"
-              id="isAdmin"
-              className="w-4 h-4 accent-yellow-500 rounded border-slate-800 bg-slate-950"
-              checked={formData.isAdmin}
-              onChange={handleChange}
-            />
-            <label htmlFor="isAdmin" className="text-sm text-slate-400 cursor-pointer select-none">
-              Register as Administrator
-            </label>
-          </div>
-
-          <button
-            type="submit"
-            disabled={loading}
-            className="w-full bg-yellow-500 hover:bg-yellow-600 disabled:bg-yellow-500/50 text-slate-950 font-bold py-3 rounded-xl transition-all flex items-center justify-center space-x-2 mt-6 shadow-lg shadow-yellow-500/20"
-          >
-            {loading ? 'Creating Team...' : (
-              <>
-                <span>Register Team</span>
-                <UserPlus className="w-5 h-5" />
-              </>
+          <AnimatePresence>
+            {error && (
+              <motion.div
+                initial={{ opacity: 0, y: -4 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0 }}
+                className="text-red-400 text-xs bg-red-500/10 border border-red-500/20 px-3 py-2.5 rounded-lg text-center mb-4"
+              >
+                {error}
+              </motion.div>
             )}
-          </button>
-        </form>
+          </AnimatePresence>
 
-        <p className="mt-6 text-center text-slate-400 border-t border-slate-800 pt-4 text-sm">
-          Already have a team? {' '}
-          <Link to="/login" className="text-yellow-500 hover:text-yellow-400 font-semibold">
-            Login here
+          <form onSubmit={handleSubmit} className="space-y-3.5">
+
+            <div>
+              <label className={lbl}>Username</label>
+              <div className={fieldWrap}>
+                <AtSign className="w-3.5 h-3.5 text-zinc-600 flex-shrink-0" />
+                <input type="text" required className={inp}
+                  placeholder="Choose a username"
+                  value={username}
+                  onChange={e => setUsername(e.target.value)} />
+              </div>
+            </div>
+
+            {/* Password */}
+            <div>
+              <label className={lbl}>Password</label>
+              <div className={fieldWrap}>
+                <Lock className="w-3.5 h-3.5 text-zinc-600 flex-shrink-0" />
+                <input type="password" required className={inp}
+                  placeholder="Create a password"
+                  value={password}
+                  onChange={e => setPassword(e.target.value)} />
+              </div>
+            </div>
+
+            {/* Confirm Password */}
+            <div>
+              <label className={lbl}>Confirm Password</label>
+              <div className={fieldWrap}>
+                <Lock className="w-3.5 h-3.5 text-zinc-600 flex-shrink-0" />
+                <input type="password" required className={inp}
+                  placeholder="Repeat your password"
+                  value={confirmPassword}
+                  onChange={e => setConfirm(e.target.value)} />
+              </div>
+            </div>
+
+            {/* Submit */}
+            <button type="submit" disabled={loading}
+              className="w-full flex items-center justify-center gap-2 bg-orange-500 hover:bg-orange-600 disabled:opacity-50 disabled:cursor-not-allowed active:scale-[.98] text-white text-sm font-bold py-2.5 rounded-lg transition-all">
+              <UserPlus className="w-3.5 h-3.5" />
+              {loading ? 'Creating account…' : 'Create account'}
+            </button>
+
+          </form>
+        </div>
+
+        {/* ── Footer ── */}
+        <div className="text-center text-xs text-zinc-500 px-6 py-4 border-t border-zinc-900">
+          Already have an account?{' '}
+          <Link to="/login" className="text-orange-500 hover:text-orange-400 font-semibold">
+            Sign in
           </Link>
-        </p>
+        </div>
+
       </motion.div>
     </div>
   );
