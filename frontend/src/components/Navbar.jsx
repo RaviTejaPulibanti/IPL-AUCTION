@@ -16,7 +16,7 @@ const Navbar = () => {
   };
 
   const navLinks = [
-    { name: 'Auction', path: '/', icon: Gavel },
+    { name: 'Lobby', path: '/', icon: Gavel },
     { name: 'My Team', path: '/team', icon: User },
     ...(user?.isAdmin ? [{ name: 'Admin', path: '/admin', icon: LayoutDashboard }] : []),
   ];

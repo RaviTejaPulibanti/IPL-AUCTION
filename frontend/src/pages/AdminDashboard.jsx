@@ -1,10 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import { useAuction } from '../context/AuctionContext';
+import { useParams } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Plus, Trash2, Gavel, Users, DollarSign, Award } from 'lucide-react';
+import { Plus, Trash2, Gavel, Award } from 'lucide-react';
 
 const AdminDashboard = () => {
+    const { roomCode } = useParams();
+    const { startAuction, endAuction } = useAuction();
     const [players, setPlayers] = useState([]);
     const [showAddForm, setShowAddForm] = useState(false);
     const [formData, setFormData] = useState({
@@ -13,7 +16,6 @@ const AdminDashboard = () => {
         basePrice: '',
         image: ''
     });
-    const { startAuction, endAuction, currentPlayer } = useAuction();
 
     useEffect(() => {
         fetchPlayers();
@@ -54,7 +56,10 @@ const AdminDashboard = () => {
     return (
         <div className="space-y-8">
             <div className="flex justify-between items-center">
-                <h2 className="text-3xl font-bold text-white">Admin Dashboard</h2>
+                <div>
+                    <h2 className="text-3xl font-bold text-white">Admin Dashboard</h2>
+                    <p className="text-slate-400 text-sm">Managing Auction Room: <span className="text-yellow-500 font-bold">{roomCode}</span></p>
+                </div>
                 <button
                     onClick={() => setShowAddForm(!showAddForm)}
                     className="flex items-center space-x-2 bg-yellow-500 hover:bg-yellow-600 text-slate-950 px-4 py-2 rounded-lg font-bold transition-all shadow-lg"
@@ -145,7 +150,7 @@ const AdminDashboard = () => {
                                 <td className="px-6 py-4 text-right space-x-2">
                                     {player.status === 'Available' && (
                                         <button
-                                            onClick={() => startAuction(player._id)}
+                                            onClick={() => startAuction({ roomCode, playerId: player._id })}
                                             className="bg-blue-600 hover:bg-blue-700 text-white p-2 rounded-lg transition-all"
                                             title="Start Auction"
                                         >
@@ -154,7 +159,7 @@ const AdminDashboard = () => {
                                     )}
                                     {player.status === 'Under Hammer' && (
                                         <button
-                                            onClick={() => endAuction(player._id)}
+                                            onClick={() => endAuction({ roomCode, playerId: player._id })}
                                             className="bg-green-600 hover:bg-green-700 text-white p-2 rounded-lg transition-all"
                                             title="End Auction"
                                         >

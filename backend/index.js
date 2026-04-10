@@ -6,8 +6,10 @@ import http from 'http';
 import connectDB from './db.js';
 import authRoutes from './routes/authRoutes.js';
 import playerRoutes from './routes/playerRoutes.js';
+import roomRoutes from './routes/roomRoutes.js';
 import Player from './models/Player.js';
 import Team from './models/Team.js';
+import Room from './models/Room.js';
 
 // Load env vars
 dotenv.config();
@@ -33,24 +35,40 @@ app.use(cors());
 // Routes
 app.use('/api/auth', authRoutes);
 app.use('/api/players', playerRoutes);
+app.use('/api/rooms', roomRoutes);
 
 // Socket.io logic
 io.on('connection', (socket) => {
   console.log('New client connected:', socket.id);
 
-  socket.on('join_auction', () => {
-    socket.join('auction_room');
-    console.log(`User joined auction room: ${socket.id}`);
+  socket.on('join_auction', (roomCode) => {
+    socket.join(roomCode);
+    console.log(`User joined auction room: ${roomCode}`);
+  });
+
+  socket.on('send_message', async ({ roomCode, message, sender }) => {
+    try {
+        const room = await Room.findOne({ roomCode });
+        if (room) {
+            const chatMsg = { sender, message, timestamp: new Date() };
+            room.chatHistory.push(chatMsg);
+            await room.save();
+            io.to(roomCode).emit('new_message', chatMsg);
+        }
+    } catch (err) {
+        console.error(err);
+    }
   });
 
   socket.on('place_bid', async (data) => {
-    const { playerId, teamId, bidAmount } = data;
+    const { roomCode, playerId, teamId, bidAmount } = data;
 
     try {
       const player = await Player.findById(playerId);
       const team = await Team.findById(teamId);
+      const room = await Room.findOne({ roomCode });
 
-      if (!player || !team) return;
+      if (!player || !team || !room) return;
 
       if (bidAmount > team.budget) {
         socket.emit('error', { message: 'Insufficient budget' });
@@ -72,7 +90,7 @@ io.on('connection', (socket) => {
       player.status = 'Under Hammer';
       await player.save();
 
-      io.to('auction_room').emit('bid_update', {
+      io.to(roomCode).emit('bid_update', {
         player,
         teamName: team.name,
       });
@@ -81,20 +99,20 @@ io.on('connection', (socket) => {
     }
   });
 
-  socket.on('start_auction', async (playerId) => {
+  socket.on('start_auction', async ({ roomCode, playerId }) => {
       try {
           const player = await Player.findById(playerId);
           if (player) {
               player.status = 'Under Hammer';
               await player.save();
-              io.to('auction_room').emit('auction_started', player);
+              io.to(roomCode).emit('auction_started', player);
           }
       } catch (err) {
           console.error(err);
       }
   });
 
-  socket.on('end_auction', async (playerId) => {
+  socket.on('end_auction', async ({ roomCode, playerId }) => {
       try {
           const player = await Player.findById(playerId);
           if (player && player.soldTo) {
@@ -107,11 +125,11 @@ io.on('connection', (socket) => {
               team.players.push(player._id);
               await team.save();
 
-              io.to('auction_room').emit('auction_ended', { player, team });
+              io.to(roomCode).emit('auction_ended', { player, team });
           } else if (player) {
               player.status = 'Unsold';
               await player.save();
-              io.to('auction_room').emit('auction_ended', { player, team: null });
+              io.to(roomCode).emit('auction_ended', { player, team: null });
           }
       } catch (err) {
           console.error(err);

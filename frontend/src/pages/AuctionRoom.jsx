@@ -1,19 +1,41 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
+import { useParams } from 'react-router-dom';
 import { useAuction } from '../context/AuctionContext';
 import { useAuth } from '../context/AuthContext';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Gavel, History, DollarSign, User, TrendingUp, AlertCircle } from 'lucide-react';
+import { Gavel, History, DollarSign, User, TrendingUp, AlertCircle, MessageSquare, Send } from 'lucide-react';
 
 const AuctionRoom = () => {
-    const { currentPlayer, bidHistory, placeBid, error } = useAuction();
+    const { roomCode } = useParams();
+    const { 
+        currentPlayer, 
+        bidHistory, 
+        messages, 
+        error, 
+        joinRoom, 
+        sendMessage, 
+        placeBid 
+    } = useAuction();
     const { user } = useAuth();
     const [bidAmount, setBidAmount] = useState('');
+    const [chatMsg, setChatMsg] = useState('');
+    const chatEndRef = useRef(null);
+
+    useEffect(() => {
+        if (roomCode) {
+            joinRoom(roomCode);
+        }
+    }, [roomCode]);
 
     useEffect(() => {
         if (currentPlayer) {
             setBidAmount(currentPlayer.currentBid + (currentPlayer.currentBid === 0 ? currentPlayer.basePrice : 10000000));
         }
     }, [currentPlayer]);
+
+    useEffect(() => {
+        chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    }, [messages]);
 
     const handleBid = (e) => {
         e.preventDefault();
@@ -23,16 +45,30 @@ const AuctionRoom = () => {
         }
     };
 
-    const quickBids = [5000000, 10000000, 50000000, 100000000]; // 50L, 1Cr, 5Cr, 10Cr
+    const handleSendMessage = (e) => {
+        e.preventDefault();
+        if (chatMsg.trim()) {
+            sendMessage(chatMsg);
+            setChatMsg('');
+        }
+    };
+
+    const quickBids = [5000000, 10000000, 50000000, 100000000];
 
     if (!currentPlayer) {
         return (
-            <div className="flex flex-col items-center justify-center min-h-[60vh] text-center space-y-6">
-                <div className="bg-slate-900 p-8 rounded-full border border-slate-800 shadow-2xl">
-                    <Gavel className="w-20 h-20 text-slate-700" />
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
+                <div className="lg:col-span-8 flex flex-col items-center justify-center min-h-[60vh] text-center space-y-6">
+                    <div className="bg-slate-900 p-8 rounded-full border border-slate-800 shadow-2xl">
+                        <Gavel className="w-20 h-20 text-slate-700" />
+                    </div>
+                    <h2 className="text-3xl font-bold text-slate-400">Waiting for next player in Room {roomCode}</h2>
+                    <p className="text-slate-500 max-w-sm">The auctioneer will bring the next player under the hammer soon.</p>
                 </div>
-                <h2 className="text-3xl font-bold text-slate-400">Waiting for next player...</h2>
-                <p className="text-slate-500 max-w-sm">The auctioneer will bring the next player under the hammer soon.</p>
+                
+                <div className="lg:col-span-4">
+                    <ChatPanel messages={messages} chatMsg={chatMsg} setChatMsg={setChatMsg} onSend={handleSendMessage} chatEndRef={chatEndRef} />
+                </div>
             </div>
         );
     }
@@ -45,19 +81,20 @@ const AuctionRoom = () => {
                 animate={{ opacity: 1, x: 0 }}
                 className="lg:col-span-8 space-y-6"
             >
-                <div className="bg-slate-900 rounded-3xl border border-slate-800 p-8 overflow-hidden relative shadow-2xl">
-                    <div className="absolute top-0 right-0 p-6">
-                        <span className="bg-yellow-500/10 text-yellow-500 border border-yellow-500/30 px-4 py-1.5 rounded-full text-sm font-bold animate-pulse uppercase tracking-wider">
+                <div className="bg-slate-900 rounded-3xl border border-slate-800 p-6 md:p-8 overflow-hidden relative shadow-2xl">
+                    <div className="absolute top-0 right-0 p-6 flex flex-col items-end space-y-2">
+                        <span className="bg-yellow-500/10 text-yellow-500 border border-yellow-500/30 px-4 py-1.5 rounded-full text-xs font-bold animate-pulse uppercase tracking-wider">
                             UNDER THE HAMMER
                         </span>
+                        <span className="text-slate-500 text-[10px] font-bold">ROOM: {roomCode}</span>
                     </div>
 
-                    <div className="flex flex-col md:flex-row gap-12 items-center">
-                        <div className="w-64 h-64 bg-slate-800 rounded-2xl flex items-center justify-center border border-slate-700 shadow-inner group overflow-hidden">
+                    <div className="flex flex-col md:flex-row gap-8 md:gap-12 items-center">
+                        <div className="w-48 h-48 md:w-64 md:h-64 bg-slate-800 rounded-2xl flex items-center justify-center border border-slate-700 shadow-inner group overflow-hidden">
                            {currentPlayer.image ? (
                                <img src={currentPlayer.image} alt={currentPlayer.name} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" />
                            ) : (
-                               <User className="w-32 h-32 text-slate-600 group-hover:scale-110 transition-transform duration-500" />
+                               <User className="w-24 h-24 md:w-32 md:h-32 text-slate-600 group-hover:scale-110 transition-transform duration-500" />
                            )}
                         </div>
 
@@ -119,30 +156,21 @@ const AuctionRoom = () => {
                         </div>
                         <button
                             type="submit"
-                            className="bg-yellow-500 hover:bg-yellow-600 text-slate-950 font-black px-8 md:px-12 py-3 md:py-4 rounded-xl text-lg md:text-xl shadow-lg shadow-yellow-500/20 transition-all hover:scale-[1.02] flex items-center justify-center space-x-2"
+                            className="bg-yellow-500 hover:bg-yellow-600 text-slate-950 font-black px-8 md:px-12 py-3 md:py-4 rounded-xl text-lg md:text-xl shadow-lg shadow-yellow-500/20 transition-all hover:scale-[1.02] flex items-center justify-center space-x-2 uppercase"
                         >
                             <Gavel className="w-5 h-5 md:w-6 md:h-6" />
-                            <span>PLACE BID</span>
+                            <span>Bid Now</span>
                         </button>
                     </form>
                 </div>
-            </motion.div>
 
-            {/* Sidebar: Bid History & Info */}
-            <motion.div 
-                initial={{ opacity: 0, x: 20 }}
-                animate={{ opacity: 1, x: 0 }}
-                className="lg:col-span-4 space-y-6"
-            >
-                <div className="bg-slate-900 rounded-3xl border border-slate-800 p-6 h-[400px] lg:h-[80vh] flex flex-col shadow-2xl">
-                    <div className="flex items-center justify-between mb-6 pb-4 border-b border-slate-800">
+                <div className="bg-slate-900 rounded-3xl border border-slate-800 p-6 flex flex-col shadow-2xl h-[400px]">
+                    <div className="flex items-center justify-between mb-4 pb-4 border-b border-slate-800">
                         <h3 className="text-xl font-bold text-white flex items-center space-x-2">
                             <History className="w-6 h-6 text-yellow-500" />
                             <span>Bid History</span>
                         </h3>
-                        <span className="text-slate-500 text-sm font-bold uppercase tracking-widest">{bidHistory.length} Bids</span>
                     </div>
-
                     <div className="flex-1 overflow-y-auto space-y-4 pr-2 custom-scrollbar">
                         <AnimatePresence mode="popLayout">
                             {bidHistory.map((bid, index) => (
@@ -150,31 +178,61 @@ const AuctionRoom = () => {
                                     key={`${bid.teamName}-${bid.bidAmount}-${index}`}
                                     initial={{ opacity: 0, y: -20, scale: 0.95 }}
                                     animate={{ opacity: 1, y: 0, scale: 1 }}
-                                    exit={{ opacity: 0, scale: 0.95 }}
-                                    className={`p-4 rounded-2xl border ${index === 0 ? 'bg-yellow-500/10 border-yellow-500/30 ring-1 ring-yellow-500/20' : 'bg-slate-800/50 border-slate-700/50'}`}
+                                    className={`p-3 rounded-2xl border ${index === 0 ? 'bg-yellow-500/10 border-yellow-500/30' : 'bg-slate-800/50 border-slate-700/50'}`}
                                 >
                                     <div className="flex justify-between items-center">
-                                        <div className="flex items-center space-x-3">
-                                            <div className={`w-8 h-8 rounded-full flex items-center justify-center ${index === 0 ? 'bg-yellow-500 text-slate-950' : 'bg-slate-700 text-slate-400'}`}>
-                                                <TrendingUp className="w-4 h-4" />
-                                            </div>
-                                            <span className={`font-bold ${index === 0 ? 'text-white' : 'text-slate-300'}`}>{bid.teamName}</span>
+                                        <div className="flex items-center space-x-2">
+                                            <TrendingUp className={`w-4 h-4 ${index === 0 ? 'text-yellow-500' : 'text-slate-500'}`} />
+                                            <span className="font-bold text-white text-sm">{bid.teamName}</span>
                                         </div>
-                                        <span className={`text-lg font-black ${index === 0 ? 'text-yellow-500' : 'text-white'}`}>₹ {(bid.bidAmount / 10000000).toFixed(2)} Cr</span>
+                                        <span className="font-black text-yellow-500">₹ {(bid.bidAmount / 10000000).toFixed(2)} Cr</span>
                                     </div>
                                 </motion.div>
                             ))}
                         </AnimatePresence>
-                        {bidHistory.length === 0 && (
-                            <div className="flex flex-col items-center justify-center h-full text-slate-600 italic">
-                                No bids yet. Be the first!
-                            </div>
-                        )}
                     </div>
                 </div>
             </motion.div>
+
+            {/* Sidebar: Chat */}
+            <div className="lg:col-span-4 h-[80vh] flex flex-col">
+                <ChatPanel messages={messages} chatMsg={chatMsg} setChatMsg={setChatMsg} onSend={handleSendMessage} chatEndRef={chatEndRef} />
+            </div>
         </div>
     );
 };
+
+const ChatPanel = ({ messages, chatMsg, setChatMsg, onSend, chatEndRef }) => (
+    <div className="bg-slate-900 rounded-3xl border border-slate-800 flex flex-col h-full shadow-2xl overflow-hidden">
+        <div className="p-6 bg-slate-800/50 border-b border-slate-800 flex items-center space-x-2">
+            <MessageSquare className="w-6 h-6 text-blue-500" />
+            <h3 className="text-xl font-bold text-white">Live Chat</h3>
+        </div>
+        
+        <div className="flex-1 overflow-y-auto p-6 space-y-4 custom-scrollbar">
+            {messages.map((msg, i) => (
+                <div key={i} className="space-y-1">
+                    <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest">{msg.sender}</p>
+                    <div className="inline-block bg-slate-800 px-4 py-2 rounded-2xl rounded-tl-none border border-slate-700">
+                        <p className="text-sm text-slate-100">{msg.message}</p>
+                    </div>
+                </div>
+            ))}
+            <div ref={chatEndRef} />
+        </div>
+
+        <form onSubmit={onSend} className="p-4 bg-slate-950 flex gap-2">
+            <input
+                className="flex-1 bg-slate-900 border border-slate-800 rounded-xl px-4 py-3 text-sm text-white focus:outline-none focus:ring-2 focus:ring-blue-500/50"
+                placeholder="Type a message..."
+                value={chatMsg}
+                onChange={(e) => setChatMsg(e.target.value)}
+            />
+            <button type="submit" className="bg-blue-600 p-3 rounded-xl text-white hover:bg-blue-700 transition-colors">
+                <Send className="w-5 h-5" />
+            </button>
+        </form>
+    </div>
+);
 
 export default AuctionRoom;

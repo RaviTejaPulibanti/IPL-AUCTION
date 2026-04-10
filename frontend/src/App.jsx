@@ -8,13 +8,12 @@ import Register from './pages/Register';
 import AdminDashboard from './pages/AdminDashboard';
 import AuctionRoom from './pages/AuctionRoom';
 import TeamDashboard from './pages/TeamDashboard';
-
-// Placeholder components
+import Lobby from './pages/Lobby';
 
 const ProtectedRoute = ({ children, adminOnly = false }) => {
   const { user, loading } = useAuth();
 
-  if (loading) return <div>Loading...</div>;
+  if (loading) return <div className="text-white">Loading...</div>;
   if (!user) return <Navigate to="/login" />;
   if (adminOnly && !user.isAdmin) return <Navigate to="/" />;
 
@@ -36,12 +35,20 @@ function App() {
                   path="/" 
                   element={
                     <ProtectedRoute>
+                      <Lobby />
+                    </ProtectedRoute>
+                  } 
+                />
+                <Route 
+                  path="/auction/:roomCode" 
+                  element={
+                    <ProtectedRoute>
                       <AuctionRoom />
                     </ProtectedRoute>
                   } 
                 />
                 <Route 
-                  path="/admin" 
+                  path="/admin/:roomCode" 
                   element={
                     <ProtectedRoute adminOnly>
                       <AdminDashboard />
